@@ -25,14 +25,15 @@ class Piece;
 
 class Board {
 public:
-	Piece* board[_BSIZE][_BSIZE];
-	std::vector<Piece*> blacks;
-	std::vector<Piece*> whites;
-	bool turn; // 0 for white 1 for black
+	Piece* _board[_BSIZE][_BSIZE];
+	bool _turn; // 0 for white 1 for black
 
 	Board(string pieces);
+	~Board();
 
 	int movePiece(string movement);
+
+private:
 	int validateMovePre(int curr_row, int curr_col, int dest_row, int dest_col);
 	int validateMovePost(int curr_row, int curr_col, int dest_row, int dest_col);
 

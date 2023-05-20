@@ -3,23 +3,28 @@
 
 Board::Board(string pieces)
 {
-	turn = 0;
+	_turn = 0;
 	for (size_t i = 0; i < _BSIZE; i++)
 		for (size_t j = 0; j < _BSIZE; j++)
 		{
 			if (pieces[i * _BSIZE + j] != '#') {
-				board[i][j] = createPiece(pieces[i * _BSIZE + j]);
-				Piece* ptr = board[i][j];
-				if (board[i][j]->getColor())
-					blacks.push_back(ptr);
-				else
-					whites.push_back(ptr);
+				_board[i][j] = createPiece(pieces[i * _BSIZE + j]);
+				Piece* ptr = _board[i][j];
 			}
 			else
-				board[i][j] = nullptr;
+				_board[i][j] = nullptr;
 		}
 }
 
+Board::~Board()
+{
+	for (size_t i = 0; i < _BSIZE; i++)
+		for (size_t j = 0; j < _BSIZE; j++)
+			if (_board[i][j])
+				delete _board[i][j];
+}
+
+// Move the piece according to the movement string thaat was received
 int Board::movePiece(string movement)
 {
 	if (movement.size() != 4)
@@ -30,65 +35,52 @@ int Board::movePiece(string movement)
 	int dest_col = movement[3] - '0' - 1;
 
 	int validationCode = validateMovePre(curr_row, curr_col, dest_row, dest_col);
+	// if the move is valid so far, keep checking
 	if (validationCode == 1) {
-		Piece* tmp_p = board[dest_row][dest_col];
-		board[dest_row][dest_col] = board[curr_row][curr_col];
-		board[curr_row][curr_col] = nullptr;
+		Piece* tmp_p = _board[dest_row][dest_col]; // save the content of the destination place in case we need to restore it
+		_board[dest_row][dest_col] = _board[curr_row][curr_col];
+		_board[curr_row][curr_col] = nullptr;
 		validationCode = validateMovePost(curr_row, curr_col, dest_row, dest_col);
 		if (validationCode != LEGAL_CHECK && validationCode != LEGAL_MOVE) {
-			board[curr_row][curr_col] = board[dest_row][dest_col];
-			board[dest_row][dest_col] = tmp_p;
+			// if the move was not legal, restore the board before the move
+			_board[curr_row][curr_col] = _board[dest_row][dest_col];
+			_board[dest_row][dest_col] = tmp_p;
 		}
 		else {
-			delete tmp_p;
+			if (tmp_p)
+				delete tmp_p;
 			tmp_p = nullptr;
-			turn = !turn;
+			_turn = !_turn;
 		}
 	}
 	return validationCode;
 }
 
+// Validate the move is legal before executing it
 int Board::validateMovePre(int curr_row, int curr_col, int dest_row, int dest_col)
 {
-	if (board[curr_row][curr_col] == nullptr)
+	if (_board[curr_row][curr_col] == nullptr)
 		return EMPTY_LOCATION;
-	if (turn != board[curr_row][curr_col]->getColor())
+	if (_turn != _board[curr_row][curr_col]->getColor())
 		return ENEMYÉÉÉ_MOVE;
-	if (board[dest_row][dest_col] != nullptr && board[dest_row][dest_col]->getColor() == turn)
+	if (_board[dest_row][dest_col] != nullptr && _board[dest_row][dest_col]->getColor() == _turn)
 		return DEST_IS_FULL;
-	if (!board[curr_row][curr_col]->isValidMove(curr_row, curr_col, dest_row, dest_col, board))
+	if (!_board[curr_row][curr_col]->isValidMove(curr_row, curr_col, dest_row, dest_col, _board))
 		return ILLEGAL_MOVE;
 	return 1;
 }
 
+// Validate the move was legal after it was done
 int Board::validateMovePost(int curr_row, int curr_col, int dest_row, int dest_col)
 {
-	if (isCheck(turn))
+	if (isCheck(_turn))
 		return SELF_CHECK;
-	if (isCheck(!turn))
+	if (isCheck(!_turn))
 		return LEGAL_CHECK;
 	return LEGAL_MOVE;
 }
 
-
-
-//int Board::validateMove(int curr_row, int curr_col, int dest_row, int dest_col)
-//{
-//	if (board[curr_row][curr_col] == nullptr)
-//		return EMPTY_LOCATION;
-//	if (turn != board[curr_row][curr_col]->getColor())
-//		return ENEMYÉÉÉ_MOVE;
-//	if (board[dest_row][dest_col] != nullptr && board[dest_row][dest_col]->getColor() == turn)
-//		return DEST_IS_FULL;
-//	if (!board[curr_row][curr_col]->isValidMove(curr_row, curr_col, dest_row, dest_col, board))
-//		return ILLEGAL_MOVE;
-//	if (isCheck(turn))
-//		return SELF_CHECK;
-//	if (isCheck(!turn))
-//		return LEGAL_CHECK;
-//	return LEGAL_MOVE;
-//}
-
+// Create a new piece according to the char that was received
 Piece* Board::createPiece(char ch)
 {
 	bool color = std::islower(ch);
@@ -112,12 +104,12 @@ Piece* Board::createPiece(char ch)
 // Check if the color that was received is under check
 bool Board::isCheck(bool color) const
 {
-	// Find the color king
 	int k_row = -1;
 	int k_col = -1;
-	for (size_t i = 0; i < _BSIZE; i++)
+	// find the king of the color
+	for (size_t i = 0; i < _BSIZE; i++)		
 		for (size_t j = 0; j < _BSIZE; j++)
-			if (board[i][j] && (board[i][j]->getInitial() == 'K' || board[i][j]->getInitial() == 'k')) {
+			if (_board[i][j] && ((_board[i][j]->getInitial() == 'K' && !color) || (_board[i][j]->getInitial() == 'k' && color))) {
 				k_row = i;
 				k_col = j;
 			}
@@ -127,8 +119,9 @@ bool Board::isCheck(bool color) const
 	{
 		for (size_t j = 0; j < _BSIZE; j++)
 		{
-			if (board[i][j] && std::islower(board[i][j]->getInitial()) != color)
-				if (board[i][j]->isValidMove(i, j, k_row, k_col, board))
+			// for each piece of the other color, check if it threatens the king
+			if (_board[i][j] && std::islower(_board[i][j]->getInitial()) != color)
+				if (_board[i][j]->isValidMove(i, j, k_row, k_col, _board))
 					return true;
 		}
 	}

@@ -1,15 +1,15 @@
 #include "Piece.h"
 
-Piece::Piece(char _initial, bool _color) :
-	initial(_initial), color(_color)
+Piece::Piece(char initial, bool color) :
+	_initial(initial), _color(color)
 {}
 
 bool Piece::getColor()
 {
-	return color;
+	return _color;
 }
 
 char Piece::getInitial()
 {
-	return initial;
+	return _initial;
 }
